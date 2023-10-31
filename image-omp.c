@@ -2,8 +2,8 @@
 #include <stdint.h>
 #include <time.h>
 #include <string.h>
-#include "image-pthread.h"
-#include <pthread.h>
+#include "image.h"
+#include <omp.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -108,40 +108,16 @@ int main(int argc,char** argv){
         printf("Error loading file %s.\n",fileName);
         return -1;
     }
-
-    printf("P - Thread: \n");
-    t1 = time(NULL);
     destImage.bpp=srcImage.bpp;
     destImage.height=srcImage.height;
     destImage.width=srcImage.width;
     destImage.data=malloc(sizeof(uint8_t)*destImage.width*destImage.bpp*destImage.height);
-    
-    pthread_t* thread_handles;
-    thread_handles = (pthread_t*) malloc(num_threads * sizeof(pthread_t));
-    for(thread = 0; thread < num_threads; thread++){
-        struct args_struct *input = malloc(sizeof(struct args_struct));
-        input->source_image = &srcImage;
-        input->dest_image = &destImage;
-        input->type = type; 
-        input->rank = thread;
-        input->thread_count = num_threads;
-        pthread_create(&thread_handles[thread], NULL, convolute , input);
-    }
-
-    //free(destImage.data);
-    t2=time(NULL);
-    printf("Took %ld seconds\n",t2-t1);
-
-     printf("Saving image...\n");
+    convolute(&srcImage,&destImage,algorithms[type]);
     stbi_write_png("output.png",destImage.width,destImage.height,destImage.bpp,destImage.data,destImage.bpp*destImage.width);
     stbi_image_free(srcImage.data);
     
-    for (thread = 0; thread < num_threads; thread++){
-    	pthread_join(thread_handles[thread], NULL);
-    }
-    free(thread_handles);
     free(destImage.data);
-    //t2=time(NULL);
-    printf("Saved image --Done\n");
+    t2=time(NULL);
+    printf("Took %ld seconds\n",t2-t1);
    return 0;
 }
